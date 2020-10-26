@@ -3,15 +3,15 @@
 # The goal here is to expand the data set to account for
 # Participants separately
 
+# import libraries & initial dataset ####
 library(dplyr)
 library(tidyr)
-
 gun.orig = read.csv('gun-violence-data_01-2013_03-2018.csv', 
                     stringsAsFactors = F)
 
 # Participant Data Processing ####
 
-# Cleans vector of strings
+# Function: Cleans vector or column of strings
 char.cleaner = function (x) {
   require(stringr)
   require(rlang)
@@ -30,57 +30,35 @@ char.cleaner = function (x) {
   }
 }
 
-### Clean the needed cols ### 
-# Incident ID
-# Participant Type
-# Participant Age
-# Participant Age Group
-# Participant Gender
-# Participant Status
+# Use Dplyr to select participant characteristics
+partic = gun.orig %>% 
+  select(., incident_id,
+         participant_type,
+         participant_status,
+         participant_gender,
+         participant_age_group,
+         participant_age)
 
+# identify & index colnames for future assignment
+pcols = data.frame(colnames(partic))
 
-gun.orig$participant_type = lapply(gun.orig$participant_type, 
-                                  char.cleaner)
-gun.orig$participant_age = lapply(gun.orig$participant_age, 
-                                  char.cleaner)
-gun.orig$participant_age_group = lapply(gun.orig$participant_age_group, 
-                                  char.cleaner)
-gun.orig$participant_gender = lapply(gun.orig$participant_gender, 
-                                  char.cleaner)
-gun.orig$participant_status = lapply(gun.orig$participant_status,
-                                  char.cleaner)
+for (i in 2:6) {
+  # apply char.cleaner to the dictionary columns
+  partic[,i] = lapply(partic[, i, drop=F], char.cleaner)
+  
+  # separate the cleaned cols to person keys
+  x = partic %>% 
+    select(., incident_id, any_of(i)) %>% 
+    unchop(., 2) %>% 
+    unchop(., 2) %>% 
+    separate(., 2, c("key", paste(pcols[[1]][i])), sep = ":")
 
-# create dfs for each type to join later by id 
-# sep into ID, Part.Key, and Part.Type cols
+  # assign 3 col df for later merging
+  assign(paste(pcols[[1]][i]), x)
+  
+}
 
-part.type = gun.orig %>% 
-  select(., incident_id, participant_type) %>% 
-  unchop(., participant_type, keep_empty = T) %>% 
-  unchop(., participant_type, keep_empty = T) %>% 
-  separate(., participant_type, c("key", "participant_type"), sep = ":")
-
-part.age = gun.orig %>% 
-  select(., incident_id, participant_age) %>% 
-  unchop(., participant_age, keep_empty = T) %>% 
-  unchop(., participant_age, keep_empty = T) %>% 
-  separate(., participant_age, c("key", "participant_age"), sep = ":")
-
-part.age_group = gun.orig %>% 
-  select(., incident_id, participant_age_group) %>% 
-  unchop(., participant_age_group, keep_empty = T) %>% 
-  unchop(., participant_age_group, keep_empty = T) %>% 
-  separate(., participant_age_group, c("key", "participant_age_group"), sep = ":")
-
-part.gender = gun.orig %>% 
-  select(., incident_id, participant_gender) %>% 
-  unchop(., participant_gender, keep_empty = T) %>% 
-  unchop(., participant_gender, keep_empty = T) %>% 
-  separate(., participant_gender, c("key", "participant_gender"), sep = ":")
-
-part.status = gun.orig %>% 
-  select(., incident_id, participant_status) %>% 
-  unchop(., participant_status, keep_empty = T) %>% 
-  unchop(., participant_status, keep_empty = T) %>% 
-  separate(., participant_status, c("key", "participant_status"), sep = ":")
-
-# Next Section Imminent ####
+participants = part.type %>% full_join(part.status, by = c("incident_id", "key"))
+participants = participants %>% full_join(part.gender, by = c("incident_id", "key"))
+participants = participants %>% full_join(part.age_group, by = c("incident_id", "key"))
+participants = participants %>% full_join(part.age, by = c("incident_id", "key"))
