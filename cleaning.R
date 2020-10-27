@@ -1,15 +1,18 @@
 ### Clean & Prepare Rich Gun Data ###
-# The participant categories are especially rich dictionaries
-# The goal here is to expand the data set to account for
-# Participants separately
+'The selected dataset from kaggle is already very clean, however,
+the participant columns are especially rich (read: dense)
+and need unpacking. Here I will create a secondary dataset
+for the purpose of in-depth analysis of persons involved
 
-# import libraries & initial dataset ####
+Kaggle source for the data:
+https://www.kaggle.com/jameslko/gun-violence-data
+'
+
+# Processing Prep; import libraries, data, define functions ####
 library(dplyr)
 library(tidyr)
 gun.orig = read.csv('gun-violence-data_01-2013_03-2018.csv', 
                     stringsAsFactors = F)
-
-# Participant Data Processing ####
 
 # Function: Cleans vector or column of strings
 char.cleaner = function (x) {
@@ -25,12 +28,22 @@ char.cleaner = function (x) {
     x = str_squish(x)
     x = gsub("\\::", "\\:", x)
     x = strsplit(x, " ")
-    
     return(x)
   }
 }
 
-# Use Dplyr to select participant characteristics
+# Participant Data Processing ####
+'Each cell consists of a dictionary; numbered keys
+connected to regular descriptors. In order to effectively
+expand these data we perform the following:
+
+ I.   Clean the columns
+ II.  Separate each column into its own dataframe (5 total)
+  --> dictionaries inherit incident_ID
+ III. Split dictionary columns into key & characteristic
+ IV.  Full_Join() the dataframes by incident_ID AND key'
+
+# Select target participant characteristics
 partic = gun.orig %>% 
   select(., incident_id,
          participant_type,
@@ -42,23 +55,29 @@ partic = gun.orig %>%
 # identify & index colnames for future assignment
 pcols = data.frame(colnames(partic))
 
+# loop to apply function & create preparatory dataframes
 for (i in 2:6) {
   # apply char.cleaner to the dictionary columns
   partic[,i] = lapply(partic[, i, drop=F], char.cleaner)
   
-  # separate the cleaned cols to person keys
+  # separate&expand cols: incident_id, key#, participant
   x = partic %>% 
     select(., incident_id, any_of(i)) %>% 
     unchop(., 2) %>% 
     unchop(., 2) %>% 
     separate(., 2, c("key", paste(pcols[[1]][i])), sep = ":")
 
-  # assign 3 col df for later merging
+  # assign bespoke df for later full_join()
   assign(paste(pcols[[1]][i]), x)
   
 }
 
-participants = part.type %>% full_join(part.status, by = c("incident_id", "key"))
-participants = participants %>% full_join(part.gender, by = c("incident_id", "key"))
-participants = participants %>% full_join(part.age_group, by = c("incident_id", "key"))
-participants = participants %>% full_join(part.age, by = c("incident_id", "key"))
+# define final participant dataframe
+all.parts = participant_type %>% 
+  full_join(participant_status, by = c("incident_id", "key")) %>% 
+  full_join(participant_gender, by = c("incident_id", "key")) %>% 
+  full_join(participant_age_group, by = c("incident_id", "key")) %>% 
+  full_join(participant_age, by = c("incident_id", "key"))
+
+# Finalize Data; create csv ####
+write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data.csv")
