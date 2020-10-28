@@ -2,8 +2,15 @@ shinyServer(function(input, output, session){
   
   # gunviolence map design ####
   output$gun.map = renderLeaflet({
-    gun.mapping = gundata %>% 
-      filter(., as.Date(date) >= as.Date(input$start.date))
+    
+    if (input$targ.char == 'All') {
+      gun.mapping = gundata %>% 
+        filter(., as.Date(date) >= as.Date(input$start.date))  
+    } else {
+      gun.mapping = gundata %>% 
+        filter(., as.Date(date) >= as.Date(input$start.date)) %>% 
+        filter(., grepl(input$targ.char, gundata$incident_characteristics))
+    }
     
     leaflet(gun.mapping) %>% 
       addTiles() %>% 
@@ -12,6 +19,6 @@ shinyServer(function(input, output, session){
     
   })
   
-  # 
+  
   
 })

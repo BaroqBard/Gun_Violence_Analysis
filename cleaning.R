@@ -32,12 +32,20 @@ char.cleaner = function (x) {
   }
 }
 
+# Original File Data Processing ####
+'Participants will be processed later. The only change
+I wish to make to the dataset at the moment is to alter
+the Date column formats to as.Date for easier usage'
+
+gun.orig$date = as.Date(gun.orig$date)
+
+
 # Participant Data Processing ####
 'Each cell consists of a dictionary; numbered keys
 connected to regular descriptors. In order to effectively
 expand these data we perform the following:
 
- I.   Clean the columns
+ I.   Clean the columns, prepping them for separation
  II.  Separate each column into its own dataframe (5 total)
   --> dictionaries inherit incident_ID
  III. Split dictionary columns into key & characteristic
@@ -79,5 +87,6 @@ all.parts = participant_type %>%
   full_join(participant_age_group, by = c("incident_id", "key")) %>% 
   full_join(participant_age, by = c("incident_id", "key"))
 
-# Finalize Data; create csv ####
+# Finalize Data; create csv's ####
 write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data.csv")
+write.csv(gun.orig, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Orig.csv")

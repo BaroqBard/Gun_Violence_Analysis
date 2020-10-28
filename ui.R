@@ -1,4 +1,4 @@
-library(shinydashboard)
+
 
 shinyUI(
   dashboardPage(
@@ -21,8 +21,13 @@ shinyUI(
       # sets analysis time range. Add an end bound?
       selectizeInput("start.date",
                      "Select Study Start Date",
-                     date.choice)
+                     d.range)
       ,
+      
+      selectizeInput("end.date",
+                     "Select Study End Date",
+                     date.end,
+                     selected = max(date.end)),
       
       # sets target characteristic of the study
       selectizeInput("targ.char",
@@ -44,6 +49,7 @@ shinyUI(
                 ),
         tabItem(tabName = "Involvement",
                 "to be replaced with incident analysis"
+                
                 
                 ),
         tabItem(tabName = "Help",
