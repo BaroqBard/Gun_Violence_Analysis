@@ -4,6 +4,8 @@ library(dplyr)
 library(stringr)  
 library(leaflet)
 library(maps)
+library(DT)
+library(ggplot2)
 library(googleVis)
 
 
@@ -14,18 +16,18 @@ partdata = read.csv('Part_Data.csv', stringsAsFactors = F)
 #Map Data Prep ####
 gun.counties = map("county", fill = T, plot = F)  
 
-
 #date.choice for the sidebar
 d.range = unique(gundata$date)
 
 date.end = unique(gundata$date)
-chara.choice = c('All', 'Shot - Dead', 'Shot - Wounded/Injured', 'Shots Fired',
-                 'Non-Shooting', 'Accidental Shooting', 'Negligent Discharge',
-                 'Officer Involved Incident', 'Officer Involved Shooting', 
-                 'School', 'Home Invasion', 'Resident injured', 'Resident killed',
-                 'Mass Shooting', 'Suicide', 'Murder/Suicide', 'Armed robbery',
-                 'Drive-by', 'Car-jacking', 'TSA Action', 'Terror', 
-                 'Possession of gun by felon')
+targ.range = c('Shot - Dead', 'Shot - Wounded/Injured', 'Shots Fired',
+               'Non-Shooting', 'Accidental Shooting', 'Negligent Discharge',
+               'Officer Involved Incident', 'Officer Involved Shooting', 
+               'School', 'Gun at school', 'Home Invasion', 'Resident injured', 'Resident killed',
+               'Mass Shooting', 'Suicide', 'Murder/Suicide', 'Armed robbery',
+               'Drive-by', 'Car-jacking', 'TSA Action', 'Terror', 
+               'Gun\\(s\\) stolen from owner', 'Possession of gun by felon',
+               'Stolen/Illegally owned')
 
 # Dependent elements
 

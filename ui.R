@@ -14,8 +14,8 @@ shinyUI(
         menuItem('Incident Map', tabName = 'Map', icon = icon("map")),
         menuItem('Incident Timeline', tabName = 'Timeline', icon = icon("chart-area")),
         menuItem('Involvement', tabName = 'Involvement', icon = icon('users')),
-        menuItem('How to Help', tabName = 'Help', icon = icon('envelope')),
-        menuItem('Data', tabName = "Data", icon = icon("database"))
+        menuItem('Details', tabName = 'Details', icon = icon('newspaper')),
+        menuItem('About', tabName = "About", icon = icon("database"))
       ),
       
       # sets analysis time range. Add an end bound?
@@ -32,32 +32,50 @@ shinyUI(
       # sets target characteristic of the study
       selectizeInput("targ.char",
                      "Select Target Characteristic",
-                     chara.choice)
+                     targ.range)
     ),
     
     # Body Section ####
     dashboardBody(
       tabItems(
         tabItem(tabName = "Map",
-                "Here's a heat map, representing gun violence in USA by county",
-                leafletOutput("gun.map")
+                # 
+                fluidRow(box(leafletOutput("gun.map")))
                 
                 ),
+        
         tabItem(tabName = "Timeline",
                 "to be replaced with timeline breakdown of incidents"
                 
+                
+                
+                # Timeline density or bar graph
+                # Toggle on body of page for second characteristic
+                # Overlays them. Add info box for correlation
                 ),
         tabItem(tabName = "Involvement",
-                "to be replaced with incident analysis"
-                
-                
-                ),
-        tabItem(tabName = "Help",
-                "to MAYBE be replaced with congressional contact info"
+                fluidRow(box(plotOutput("part.type")),   #bar
+                         box(plotOutput("part.status")), #bar
+                         box(plotOutput("part.gen")),    #bar
+                         box(plotOutput("part.age")))    #bar
                 
                 ),
-        tabItem(tabName = "Data",
-                "to be replaced with raw gvis data"
+        
+        tabItem(tabName = "Details",
+                #"to be filled out with some fancy, filtered data"
+                DT::dataTableOutput("detailtable")
+                
+                ),
+        
+        tabItem(tabName = "About",
+                tabsetPanel(
+                  tabPanel("About the Project", 
+                           "to be replaced with mild documentation"
+                           ),
+                  tabPanel("Raw Data", DT::dataTableOutput("guntable")),
+                  tabPanel("Participant Data", DT::dataTableOutput("parttable"))
+                  
+                  )
                 
                 )
       )
