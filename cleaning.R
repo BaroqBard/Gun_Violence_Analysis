@@ -87,6 +87,12 @@ all.parts = participant_type %>%
   full_join(participant_age_group, by = c("incident_id", "key")) %>% 
   full_join(participant_age, by = c("incident_id", "key"))
 
+# take out the garbage data
+all.parts = all.parts %>% 
+  filter(., participant_gender == "Male" |
+           participant_gender == "Female" |
+           is.na(participant_gender) == T)
+
 # Finalize Data; create csv's ####
-write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data.csv")
-write.csv(gun.orig, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Orig.csv")
+#write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data.csv")
+#write.csv(gun.orig, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Orig.csv")

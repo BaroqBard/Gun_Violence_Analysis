@@ -7,6 +7,8 @@ library(maps)
 library(DT)
 library(ggplot2)
 library(googleVis)
+library(plotly)
+library(ggthemes)
 
 
 #Data Import ####
@@ -28,6 +30,7 @@ targ.range = c('Shot - Dead', 'Shot - Wounded/Injured', 'Shots Fired',
                'Drive-by', 'Car-jacking', 'TSA Action', 'Terror', 
                'Gun\\(s\\) stolen from owner', 'Possession of gun by felon',
                'Stolen/Illegally owned')
+targ.char2 = c('Age Group')
 
 # Dependent elements
 
