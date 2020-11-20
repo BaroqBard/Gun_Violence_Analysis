@@ -9,6 +9,7 @@ library(ggplot2)
 library(googleVis)
 library(plotly)
 library(ggthemes)
+library(scales)
 
 
 #Data Import ####
@@ -16,12 +17,15 @@ gundata = read.csv('Gun_Orig.csv', stringsAsFactors = F)
 partdata = read.csv('Part_Data.csv', stringsAsFactors = F)
 
 #Map Data Prep ####
-gun.counties = map("county", fill = T, plot = F)  
+counties = map("county", fill = T, plot = F)  
+
+
 
 #date.choice for the sidebar
 d.range = unique(gundata$date)
 
 date.end = unique(gundata$date)
+
 targ.range = c('Shot - Dead', 'Shot - Wounded/Injured', 'Shots Fired',
                'Non-Shooting', 'Accidental Shooting', 'Negligent Discharge',
                'Officer Involved Incident', 'Officer Involved Shooting', 
@@ -30,16 +34,6 @@ targ.range = c('Shot - Dead', 'Shot - Wounded/Injured', 'Shots Fired',
                'Drive-by', 'Car-jacking', 'TSA Action', 'Terror', 
                'Gun\\(s\\) stolen from owner', 'Possession of gun by felon',
                'Stolen/Illegally owned')
-targ.char2 = c('Age Group')
 
-# Dependent elements
+# targ.char2 = c('Age Group')
 
-'
-Characteristics of interest
-
-chara.choice details, grepl for them
-
-IN which(grepl("Terror", gundata$incident_characteristics))
-
-
-'
