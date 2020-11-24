@@ -32,7 +32,9 @@ char.cleaner = function (x) {
   }
 }
 
-# Original File Data Processing ####
+
+
+#### Original File Data Processing ####
 'Participants will be processed later. The only change
 I wish to make to the dataset at the moment is to alter
 the Date column formats to as.Date for easier usage'
@@ -40,7 +42,7 @@ the Date column formats to as.Date for easier usage'
 gun.orig$date = as.Date(gun.orig$date)
 
 
-# Participant Data Processing ####
+#### Participant Data Processing ####
 'Each cell consists of a dictionary; numbered keys
 connected to regular descriptors. In order to effectively
 expand these data we perform the following:
@@ -52,13 +54,16 @@ expand these data we perform the following:
  IV.  Full_Join() the dataframes by incident_ID AND key'
 
 # Select target participant characteristics
-partic = gun.orig %>% 
-  select(., incident_id,
-         participant_type,
-         participant_status,
-         participant_gender,
-         participant_age_group,
-         participant_age)
+partic = gun.orig %>%
+  select(
+    .,
+    incident_id,
+    participant_type,
+    participant_status,
+    participant_gender,
+    participant_age_group,
+    participant_age
+  )
 
 # identify & index colnames for future assignment
 pcols = data.frame(colnames(partic))
@@ -93,6 +98,51 @@ all.parts = all.parts %>%
            participant_gender == "Female" |
            is.na(participant_gender) == T)
 
-# Finalize Data; create csv's ####
+#### Gun Involvement Processing ####
+'This section will perform a similar function to
+that of the Participant Processing'
+
+gun.inv = gundata %>% 
+  select(., incident_id, gun_stolen, gun_type)
+
+# Preserves Column Naming
+gcols = data.frame(colnames(gun.inv))
+
+# Loops through columns
+for (i in 2:3) {
+  gun.inv[,i] = lapply(gun.inv[, i, drop = F], char.cleaner)
+  
+  # Separates each column per incident_id, maintaining keys
+  x = gun.inv %>% 
+    select(., incident_id, any_of(i)) %>% 
+    unchop(., 2) %>% 
+    unchop(., 2) %>% 
+    separate(., 2, c("key", paste(gcols[[1]][i])), sep = ":")
+  
+  # Assigns separate dfs per col, to preserve keys & ids
+  assign(paste(gcols[[1]][i]), x)
+  
+}
+
+all.guns = gun_type %>% 
+  full_join(., gun_stolen, by = c("incident_id", "key"))
+
+#### Law Data Processing ####
+glaws = read.csv('Gun_Laws.csv', stringsAsFactors = F)
+
+for (i in 2:4) {
+  glaws[,i] = sapply(glaws[,i], function(x) ifelse(x == "true", "Required", "Not Required"))
+  
+}
+
+glaws[, 5] = sapply(glaws[, 5], function(x) ifelse(x == "true", "Yes", "No"))
+
+names(glaws) = c("State", "Firearm Registration", "Carry Permit", "Purchase Permit", "Open Carry")
+
+#### Finalize Data; create csv's ####
+
+#write.csv(all.guns, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Guns_Involved.csv")
 #write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data.csv")
 #write.csv(gun.orig, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Orig.csv")
+write.csv(glaws, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Laws_Clean.csv")
+

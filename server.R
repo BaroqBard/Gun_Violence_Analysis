@@ -5,18 +5,17 @@ shinyServer(function(input, output, session){
   will ensure throughout the study that data is 
   restricted to the user-made selections on the sidebar'
   
-  # Filter ORIGINAL dataset BY SIDEBAR
+  # Filter ORIGINAL dataset BY SIDEBAR (return DF)
   sidebar.selection = reactive({
     gundata %>% 
       filter(., grepl(input$targ.char,
-                      incident_characteristics)) %>% 
-      filter(., date >= input$start.date &
-               date <= input$end.date)
+                      incident_characteristics, fixed = T)) %>% 
+      filter(., date >= min(input$daterange) &
+               date <= max(input$daterange))
   })
   
-  # Filter PARTICIPANT dataset BY SIDEBAR
+  # Filter PARTICIPANT dataset BY SIDEBAR (return DF)
   part.selection = reactive({
-    # Find original dataset
     gun.subset = sidebar.selection()
     
     # Find participant data relevant to INCIDENT_ID
@@ -24,9 +23,8 @@ shinyServer(function(input, output, session){
       filter(incident_id %in% gun.subset[, 2])
   })
   
-  # Find TOP CONCURRENT INCIDENT CHARACTERISTICS
+  # Find Top Concurrent Incident Characteristics (return DF)
   coincident.df = reactive ({
-    # Finds gundata subset
     gun.subset = sidebar.selection()
     
     # Excludes input target characterstic from targ.range
@@ -42,9 +40,9 @@ shinyServer(function(input, output, session){
     }
     
     # Prepares DF Output Characteristics
-    char.df = rbind(new.targ.range, targsum.vec)
-    char.df = data.frame(t(char.df), stringsAsFactors = F)
-    names(char.df) = c("Characteristic", "Total")
+    char.df = rbind(new.targ.range, targsum.vec) # rbinds vecs into df
+    char.df = data.frame(t(char.df), stringsAsFactors = F) # rows into cols
+    names(char.df) = c("Characteristic", "Total")# Renames cols; cosmetic
     char.df$Total = as.integer(char.df$Total)
     char.df = char.df %>%                        # Calculates occurence rate
       summarise(.,
@@ -53,85 +51,170 @@ shinyServer(function(input, output, session){
                 Total)
     char.df$Rate = label_percent()(char.df$Rate) # Presents Rate as %
     
-    # Outputs DF
+    # Outputs DF, ordered HIGH chars to LOW chars
     char.df %>%
       arrange(., desc(Total))
     
   })
   
+  # Find most-involved gun classifications (return DF)
+  gunsinvolved.df = reactive({
+    gun.subset = sidebar.selection()
+    gunvec = unique(weapondata$gun_type)
+    weap.subset = weapondata %>%                #find weapons in selection
+      filter(incident_id %in% gun.subset[,2])
+    targsum.vec = c()                 #empty vec for loop
+    
+    for (i in gunvec) {
+      targsum.vec = cbind(targsum.vec, sum(grepl(
+        i, weap.subset$gun_type, fixed = T
+      )))
+      
+    }
+    
+    gun.df = rbind(gunvec, targsum.vec)
+    gun.df = data.frame(t(gun.df), stringsAsFactors = F)
+    names(gun.df) = c("Weapon", "Total")
+    gun.df$Total = as.integer(gun.df$Total)
+    gun.df = gun.df %>% 
+      summarise(.,
+                Weapon,
+                Rate = Total / length(gun.subset$incident_characteristics),
+                Total)
+    gun.df$Rate = label_percent()(gun.df$Rate)
+    
+    gun.df %>% 
+      arrange(., desc(Total))
+    
+  })
   
-  ################################################
-  
-  # color.selection = reactive({
-  #   gun.subset = sidebar.selection()
-  #   
-  #   gun.subset %>% 
-  #     mutate(., happened = 1) %>% 
-  #     group_by(., city_or_county) %>% 
-  #     summarise(., incident_id,
-  #               n_killed,
-  #               n_injured,
-  #               latitude, 
-  #               longitude, 
-  #               incidents = sum(happened))
-  # })
-  # 
-  # leaf.selection = reactive({
-  #   gun.subset = sidebar.selection()
-  #   
-  #   gun.subset %>% 
-  #     mutate(., happened = 1)
-  # })
-
-  
-  
-  #################################################
-  
-  #### Map Output Plot ####
-  # output$gun.map = renderLeaflet({
-   # gun.subset = sidebar.selection()
-   # tempset = gun.subset %>%
-   #   mutate(., geo = paste(state, city_or_county, sep = ",")) %>% 
-   #   count(., geo) %>% 
-   #   right_join(., ggcounties, by = c("geo", "names"))
-   # 
-   # binpal = colorBin("Blues", tempset, 6, pretty = T)
-  
-   # leaflet(gun.subset) %>% 
-   #   addProviderTiles("Esri.WorldStreetMap") %>% 
-   #   addPolygons(stroke = F,
-   #               smoothFactor = 0.2,
-   #               fillOpacity = 1
-   #               )
-     # find bloody tutorial, coloring polygons
-  
-  # })
-  
-  output$gun.map = renderGvis({
-    gun.subset = sidebar.selection() %>% 
-      mutate(., Locations = paste(city_or_county, state, "United States",sep = ","))
+  # Create Dashboard DF with Mapping, Legal, & Population Data (return DF)
+  dashdata.df = reactive({
+    gun.subset = sidebar.selection() #%>% 
+      #mutate(., Locations = paste(city_or_county, state, "United States",sep = ","))
+    
+    # Calculates the "Incidents" column, counts by state
     temp.subset = gun.subset %>%
-      count(., state, name = "Incidents")
-    gun.subset = temp.subset %>%
-      full_join(., gun.subset, by = "state")# %>% 
-      #mutate(., Incidents = 1)
+      group_by(., state) %>% 
+      summarise(., Incidents = n(), 
+                Injured = sum(n_injured), 
+                Killed = sum(n_killed),
+                Guns = sum(n_guns_involved, na.rm = T)) %>% 
+      left_join(., popdata, by = "state") %>% 
+      left_join(., lawdata, by = "state") %>% 
+      filter(., state != "District of Columbia")
+      
+    
+    if (input$pop_scale == "percap") {
+      temp.subset = temp.subset %>% 
+        mutate(., Incidents = (Incidents/Pop) * 1000,
+               Injured = (Injured/Pop) * 1000, 
+               Killed = (Killed/Pop) * 1000,
+               Guns = (Guns/Pop) * 1000)
+    } else {
+      temp.subset = temp.subset %>% 
+        mutate(., Injured = Injured / Incidents,
+               Killed = Killed / Incidents,
+               Guns = Guns / Incidents)
+    }
+      
+    temp.subset
+    
+  })
+  
+  #### Map Output ####
 
+  output$gun.map = renderGvis({
+    dash.data = dashdata.df()
 
+    # Produces the gvis output, using the counted incidents
     gvisGeoChart(
-      gun.subset,
+      dash.data,
       locationvar = "state",
       colorvar = "Incidents",
       options = list(
         region = "US",
         displayMode = "auto",
         resolution = "provinces",
-        datalessRegionColor = "blue"
+        datalessRegionColor = "grey"
       )
     )
     
   })
   
-  #### Timeline Output Section ####
+  #### Infobox Outputs ####
+  
+  output$dashMax = renderInfoBox({
+    dash.data = dashdata.df()
+    
+    maxtemp = dash.data %>% 
+      arrange(., desc(Incidents)) %>% 
+      head(., 1) %>% 
+      summarise(., state, Incidents)
+    
+    infoBox(maxtemp$state, 
+            round(maxtemp$Incidents, digits = 3),
+            subtitle = "Most Incidents",
+            icon = icon("lightbulb"),
+            color = "yellow",
+            width = 3)
+    
+  })
+  
+  output$dashMeanGuns = renderInfoBox({
+    dash.data = dashdata.df()
+    
+    meanGuns = dash.data %>% 
+      arrange(., desc(Guns)) %>% 
+      head(., 1) %>% 
+      summarise(., state, Guns)
+    
+    infoBox(meanGuns$state,
+            round(meanGuns$Guns, digits = 3),
+            subtitle = "AVG Guns Involved",
+            icon = icon("crosshairs"),
+            color = "yellow",
+            width = 3,
+            fill = T)
+    
+  })
+  
+  output$dashMaxInj = renderInfoBox({
+    dash.data = dashdata.df()
+    
+    maxInj = dash.data %>% 
+      arrange(., desc(Injured)) %>% 
+      head(., 1) %>% 
+      summarise(., state, Injured)
+    
+    infoBox(maxInj$state,
+            round(maxInj$Injured, digits = 3),
+            subtitle = "Most Persons Injured",
+            color = "red",
+            width = 3,
+            icon = icon("ambulance"))
+    
+  })
+  
+  output$dashMaxKill = renderInfoBox({
+    dash.data = dashdata.df()
+    
+    maxKill = dash.data %>% 
+      arrange(., desc(Killed)) %>% 
+      head(., 1) %>% 
+      summarise(., state, Killed)
+    
+    infoBox(maxKill$state,
+            round(maxKill$Killed, digits = 3),
+            subtitle = "Most Persons Killed",
+            color = "red",
+            width = 3,
+            fill = T,
+            icon = icon("dizzy"))
+    
+  })
+  
+  #### Timeline Output ####
   'The goal of this section is to answer the question:
   WHEN do these things happen? Specifically, 1) Is there
   a chronological pattern to these events, and 2) Is there
@@ -139,7 +222,6 @@ shinyServer(function(input, output, session){
   of incidents?'
   
   output$gun.timeline = renderPlotly({
-    # Account for User Input
     gun.subset = sidebar.selection()
     gun.subset$date = as.Date(gun.subset$date)
     top.coinc = coincident.df()
@@ -173,7 +255,7 @@ shinyServer(function(input, output, session){
   })
   
   
-  #### Participant Output Plots ####
+  #### Participant Plot Outputs ####
   'The goal of this section is to answer the question:
   WHO is involved in this study? Specifically, 1) Who
   are the VICTIMS, and 2) Who are the SUSPECTS? What was
@@ -186,7 +268,6 @@ shinyServer(function(input, output, session){
   # Render a Plotly Graph of Victim Involvement
   # --> Status filled with Gender, log10 scale
   output$part.vic = renderPlotly({
-    # Select victim participants
     vic.temp = part.selection() %>%
       filter(., participant_type == "Victim") 
     
@@ -207,18 +288,15 @@ shinyServer(function(input, output, session){
         legend.position = "bottom"
         )
     
-    # output ggplotly transformation of graph
     ggplotly(g)
   })
   
   # Render a Plotly Graph of Suspect Involvement
   # --> Status filled with Gender, log10 scale
   output$part.sus = renderPlotly({
-    # Select suspect participants
     sus.temp = part.selection() %>%
       filter(., participant_type == "Subject-Suspect") 
     
-    # ggplot the graph w/ customization, colorblind friendly
     g = ggplot(data = sus.temp, aes(x = participant_status)) +
       geom_bar(aes(fill = participant_gender)) +
       ggtitle("Status of Suspects") +
@@ -235,7 +313,6 @@ shinyServer(function(input, output, session){
         legend.position = "bottom"
         ) 
     
-    # output ggplotly transformation of graph
     ggplotly(g)
   })
   
@@ -261,7 +338,7 @@ shinyServer(function(input, output, session){
   })
   
 
-  #### Data Tab Datatable ####
+  #### Datatable Outputs ####
   'One of the main goals with this project is transparency
   of the data involved. As such, I will provide 1) raw data
   tables in the about section, and 2) a user-filtered data
@@ -279,7 +356,7 @@ shinyServer(function(input, output, session){
               extensions = c("Buttons"),
               options = list(
                 scrollX = T,
-                pageLength = 7,
+                pageLength = 5,
                 dom = "Bfrtip",
                 buttons = c("copy", "csv", "excel"),
                 autoWidth = T,
@@ -300,6 +377,40 @@ shinyServer(function(input, output, session){
                 buttons = c("copy", "csv", "excel")
                 
               ))
+  })
+  
+  output$weapons.table = DT::renderDataTable({
+    weap.details = gunsinvolved.df()
+    datatable(weap.details, rownames = F,
+              extensions = c("Buttons"),
+              options = list(
+                pageLength = 5,
+                scrollX = T,
+                dom = "Bfrtip",
+                buttons = c("copy", "csv", "excel")
+                
+              ))
+  })
+  
+  output$dashtable = DT::renderDataTable({
+    dashdata = dashdata.df() %>% 
+      mutate(., Incidents = round(Incidents, digits = 3),
+             Guns = round(Guns, digits = 3),
+             Injured = round(Guns, digits = 3),
+             Killed = round(Killed, digits = 3)) %>% 
+      select(., 1:5,7,9:12) %>% 
+      arrange(., desc(Incidents))
+    
+    datatable(dashdata,
+              rownames = F,
+              extensions = c("Buttons"),
+              options = list(
+                pageLength = 3,
+                scrollX = T,
+                dom = "Bfrtip",
+                buttons = c("copy", "csv", "excel")
+              ))
+    
   })
   
   output$guntable = DT::renderDataTable({
