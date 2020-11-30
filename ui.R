@@ -9,30 +9,31 @@ shinyUI(
     
     # Sidebar Section ####
     dashboardSidebar(
-      # Menu setup for the tab selections
+      ## * Initial Menu Tabs ####
       sidebarMenu(
         menuItem("A Shiny App by Theodore Cheek",
                  icon = NULL, 
                  href = "https://www.linkedin.com/in/theodorecheek/"),
-        menuItem('Incident Breakdown', tabName = 'Breakdown', icon = icon("map")),
-        menuItem('Involvement', tabName = 'Involvement', icon = icon('users')),
-        menuItem('Legality Ramifications', tabName = 'Legality', icon = icon('book')),
-        menuItem('News & Data', tabName = "News", icon = icon("newspaper"))
+        menuItem('Incident Dashboard', tabName = 'Breakdown', icon = icon("map")),
+        menuItem('National Characteristics', tabName = 'Involvement', icon = icon('users')),
+        menuItem('Data Reporting', tabName = "News", icon = icon("newspaper"))
       ),
       
+      ## * Daterange Slider ####
       sliderInput("daterange",
                   "Select a Date Range",
                   min = as.Date("2013-01-01"),
                   max = as.Date("2018-03-01"),
-                  value = c(as.Date("2013-01-01"), as.Date("2018-03-01")),
+                  value = c(as.Date("2014-01-01"), as.Date("2018-03-01")),
                   timeFormat = "%b %Y"),
       
-      # Select target characteristic of study
+      ## * Characteristic Drop-down ####
       selectizeInput("targ.char",
                      "Select Target Characteristic",
                      targ.range),
       br(),
       
+      ## * Sources Sidebar ####
       sidebarMenu(
         menuItem("Sources", icon = icon("folder-open"),
                  menuSubItem("Github R Source Code", icon = icon("file-code-o"),
@@ -55,23 +56,20 @@ shinyUI(
     
     # Body Section ####
     dashboardBody(tabItems(
-      # WHERE did this happen and are there geographical trends?
       tabItem(tabName = "Breakdown",
               tabsetPanel(
                 tabPanel(
+                  ## * Incident Dashboard ####
                   "Incident Dashboard",
                   fluidRow(
                     box(
-                      title = "Map of Gun Violence across the Country",
+                      title = "Incident Tracker by State",
                       solidHeader = T,
                       status = "primary",
                       htmlOutput("gun.map"),
                       width = 12
                     )
                   ),
-                  
-                  # throw in dashboard boxes here
-                  # info, 1 toggling per-capita numbers
                   fluidRow(
                     box(
                       title = "Choose a Scale:",
@@ -81,10 +79,8 @@ shinyUI(
                       status = "warning",
                       radioButtons(inputId = "pop_scale",
                                    label = NULL,
-                                   choices = c("Per Capita x 1,000" = "percap",
+                                   choices = c("Per Capita x 100,000" = "percap",
                                                "Per Incident" = "identity")),
-                      ####MAKE CUSTOM SCALE @ scales::trans_new() - find in
-                      ####scale_y_continuous documentation
                       width = 3
                     ),
                     
@@ -104,17 +100,50 @@ shinyUI(
                     )
                   )
                 ),
-
+                
                 tabPanel(
-                  "Timeline",
+                  ## * Legal Ramifications ####
+                  "Legal Ramifications",
                   fluidRow(
                     box(
-                      title = "Event Timeline Density",
-                      status = "primary",
+                      title = "State Weapon Laws",
                       solidHeader = T,
-                      plotlyOutput("gun.timeline"),
-                      width = 12,
-                      footer = "Here's a footer, let's expand on it"
+                      status = "warning",
+                      checkboxGroupInput("legal.parameter", 
+                                         "Choose Your Legal Parameters:",
+                                         c("Firearm Registration" = "Firearm.Registration",
+                                           "Carry Permit" = "Carry.Permit",
+                                           "Purchase Permit" = "Purchase.Permit",
+                                           "Open Carry" = "Open.Carry")),
+                      width = 3
+                      
+                    ),
+                    box(
+                      title = "Select Parameters",
+                      solidHeader = T,
+                      "Secondary Characteristic: ",
+                      status = "warning",
+                      selectizeInput(inputId = "state.cat",
+                                     label = NULL,
+                                     choices = c("Injured",
+                                                 "Killed",
+                                                 "Guns")),
+                      "Display scale: ",
+                      radioButtons(inputId = "state.scale",
+                                   label = NULL,
+                                   choices = c("Per Capita x 100,000" = "percap",
+                                               "Per Incident" = "identity")),
+                      width = 3
+                    )
+                  ),
+                  
+                  fluidRow(
+                    box(
+                      title = "State Gun Friendliness; Breakdown Per Incident",
+                      solidHeader = T,
+                      status = "primary",
+                      htmlOutput("dash.law"),
+                      width = 12
                     )
                     
                   )
@@ -127,26 +156,9 @@ shinyUI(
       # WHO is involved? Details of Victims & Suspects
       tabItem(tabName = "Involvement",
               tabsetPanel(
-                tabPanel("Participant Status",
+                ## * Participant Involvement ####
+                tabPanel("Participant Involvement",
                          # put the boxes here
-                         fluidRow(
-                           box(
-                             title = "Subsequent Subject Status",
-                             status = "primary",
-                             solidHeader = T,
-                             plotlyOutput("part.sus"),
-                             width = 12
-                           ),
-                           box(
-                             title = "Subsequent Victim Status",
-                             status = "primary",
-                             solidHeader = T,
-                             plotlyOutput("part.vic"),
-                             width = 12
-                           )
-                         )),
-                tabPanel("Participant Age Distribution",
-                         # Put the age box here
                          fluidRow(
                            box(
                              title = "Age Distribution of Incident Participants",
@@ -155,8 +167,67 @@ shinyUI(
                              plotlyOutput("part.age"),
                              width = 12
                            )
-                         )),
-                tabPanel("Coincident Details",
+                         ),
+                         
+                         fluidRow(
+                           box(
+                             title = "Proportional Age Involvement",
+                             status = "warning",
+                             solidHeader = T,
+                             plotOutput("part.agegroup",
+                                        width = "100%",
+                                        height = "250px"),
+                             width = 6
+                           )
+                         ),
+                         
+                         fluidRow(
+                           box(
+                             title = "Subsequent Status of Participants",
+                             status = "primary",
+                             solidHeader = T,
+                             plotlyOutput("part.status"),
+                             width = 12
+                           )
+                           
+                         )
+                         
+                         ),
+                ## * Coincident Details ####
+                tabPanel("Coincidental Details",
+                         fluidRow(
+                           box(
+                             title = "Timeline Data",
+                             status = "primary",
+                             solidHeader = T,
+                             plotlyOutput("natl.timeline"),
+                             width = 12
+                           ),
+                           box(
+                             title = "Primary Association",
+                             status = "warning",
+                             solidHeader = T,
+                             plotOutput("natl.coinc1",
+                                          height = "120px"),
+                             width = 4
+                           ),
+                           box(
+                             title = "Secondary Association",
+                             status = "warning",
+                             solidHeader = T,
+                             plotOutput("natl.coinc2",
+                                          height = "120px"),
+                             width = 4
+                           ),
+                           box(
+                             title = "Third Association",
+                             status = "warning",
+                             solidHeader = T,
+                             plotOutput("natl.coinc3",
+                                          height = "120px"),
+                             width = 4
+                           )
+                         ),
                          fluidRow(
                            box(
                              title = "Concurrent Incident Characteristics",
@@ -180,20 +251,11 @@ shinyUI(
                          ))
               )),
       
-      # tabItem(tabName = "Legality",
-      #         tabsetPanel("Stats by State",
-      #           fluidRow(
-      #             
-      #             
-      #           )
-      #           
-      #         )
-      #         
-      #         ),
       
       tabItem(tabName = "News",
               tabsetPanel(
-                tabPanel("Notes & News Links",
+                ## * Filtered, Searchable Data ####
+                tabPanel("Filtered, Searchable Data",
                          fluidRow(
                            box(
                              title = "Select Details from the Filtered Dataset",
@@ -208,8 +270,8 @@ shinyUI(
                              width = 12
                            )
                          )),
-                
-                tabPanel("Unfiltered Data",
+                ## * Original Unfiltered Dataset
+                tabPanel("Original, Unfiltered Dataset",
                          fluidRow(
                            box(
                              title = "Original, Unfiltered Incident Data",

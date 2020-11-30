@@ -5,7 +5,8 @@ shinyServer(function(input, output, session){
   will ensure throughout the study that data is 
   restricted to the user-made selections on the sidebar'
   
-  # Filter ORIGINAL dataset BY SIDEBAR (return DF)
+  ## * Gundata Dataset ####
+  # Filter Gundata by Sidebar
   sidebar.selection = reactive({
     gundata %>% 
       filter(., grepl(input$targ.char,
@@ -14,16 +15,7 @@ shinyServer(function(input, output, session){
                date <= max(input$daterange))
   })
   
-  # Filter PARTICIPANT dataset BY SIDEBAR (return DF)
-  part.selection = reactive({
-    gun.subset = sidebar.selection()
-    
-    # Find participant data relevant to INCIDENT_ID
-    partdata %>% 
-      filter(incident_id %in% gun.subset[, 2])
-  })
-  
-  # Find Top Concurrent Incident Characteristics (return DF)
+  # Find Dataframe of MOST COINCIDENT Target Characteristics
   coincident.df = reactive ({
     gun.subset = sidebar.selection()
     
@@ -31,7 +23,7 @@ shinyServer(function(input, output, session){
     z = which(targ.range %in% input$targ.char)
     new.targ.range = targ.range[-z]
     
-    # Finds Vector Sums of Coincident Characteristics
+    # Builds Vector of Sums of Coincident Characteristics
     targsum.vec = c()
     for (i in new.targ.range) {
       targsum.vec = cbind(targsum.vec, sum(grepl(
@@ -57,7 +49,34 @@ shinyServer(function(input, output, session){
     
   })
   
-  # Find most-involved gun classifications (return DF)
+  # Find Dataset of State Info & Legal Restrictions
+  statedata.df = reactive({
+    gun.subset = sidebar.selection()
+    
+    temp.subset = gun.subset %>%
+      group_by(., state) %>% 
+      summarise(., Incidents = n(), 
+                Injured = sum(n_injured), 
+                Killed = sum(n_killed),
+                Guns = sum(n_guns_involved, na.rm = T)) %>% 
+      left_join(., popdata, by = "state") %>% 
+      left_join(., lawdata, by = "state") %>% 
+      filter(., state != "District of Columbia")
+    
+    temp.subset
+    
+  })
+  
+  ## * Participant Data ####
+  part.selection = reactive({
+    gun.subset = sidebar.selection()
+    
+    # Find participant data relevant to INCIDENT_ID
+    partdata %>% 
+      filter(incident_id %in% gun.subset[, 2])
+  })
+  
+  ## * Weapon Data ####
   gunsinvolved.df = reactive({
     gun.subset = sidebar.selection()
     gunvec = unique(weapondata$gun_type)
@@ -88,37 +107,53 @@ shinyServer(function(input, output, session){
     
   })
   
+
+  
   # Create Dashboard DF with Mapping, Legal, & Population Data (return DF)
   dashdata.df = reactive({
-    gun.subset = sidebar.selection() #%>% 
-      #mutate(., Locations = paste(city_or_county, state, "United States",sep = ","))
-    
-    # Calculates the "Incidents" column, counts by state
-    temp.subset = gun.subset %>%
-      group_by(., state) %>% 
-      summarise(., Incidents = n(), 
-                Injured = sum(n_injured), 
-                Killed = sum(n_killed),
-                Guns = sum(n_guns_involved, na.rm = T)) %>% 
-      left_join(., popdata, by = "state") %>% 
-      left_join(., lawdata, by = "state") %>% 
-      filter(., state != "District of Columbia")
+    dash.subset = statedata.df()
       
     
     if (input$pop_scale == "percap") {
-      temp.subset = temp.subset %>% 
-        mutate(., Incidents = (Incidents/Pop) * 1000,
-               Injured = (Injured/Pop) * 1000, 
-               Killed = (Killed/Pop) * 1000,
-               Guns = (Guns/Pop) * 1000)
+      dash.subset = dash.subset %>% 
+        mutate(., Incidents = (Incidents/Pop) * 100000,
+               Injured = (Injured/Pop) * 100000, 
+               Killed = (Killed/Pop) * 100000,
+               Guns = (Guns/Pop) * 100000)
     } else {
-      temp.subset = temp.subset %>% 
+      dash.subset = dash.subset %>% 
         mutate(., Injured = Injured / Incidents,
                Killed = Killed / Incidents,
                Guns = Guns / Incidents)
     }
       
-    temp.subset
+    dash.subset
+    
+  })
+  
+  legaldata.df = reactive({
+    legal.subset = statedata.df() %>% 
+      select(., 1:5,7,9:12) %>% 
+      mutate(., 
+             Fire = sapply(Firearm.Registration, req_to_bool),
+             Carry = sapply(Carry.Permit, req_to_bool),
+             Purchase = sapply(Purchase.Permit, req_to_bool),
+             Open = sapply(Open.Carry, yes_to_bool)) %>% 
+      mutate(.,
+             state = state.abb[which(state.name == state)],
+             GFriendly = (Fire + Carry + Purchase + Open)) %>% 
+      rename(., State = state, "Gun Friendly Laws" = GFriendly)
+    
+    if (input$state.scale == "percap") {
+      legal.subset = legal.subset %>% 
+        mutate(., Incidents = (Incidents/Pop) * 100000,
+               Injured = (Injured/Pop) * 100000, 
+               Killed = (Killed/Pop) * 100000,
+               Guns = (Guns/Pop) * 100000)
+    } else {
+      legal.subset
+      
+    }
     
   })
   
@@ -143,6 +178,9 @@ shinyServer(function(input, output, session){
   })
   
   #### Infobox Outputs ####
+  
+  
+  ## * State Infoboxes ####
   
   output$dashMax = renderInfoBox({
     dash.data = dashdata.df()
@@ -214,120 +252,179 @@ shinyServer(function(input, output, session){
     
   })
   
-  #### Timeline Output ####
-  'The goal of this section is to answer the question:
-  WHEN do these things happen? Specifically, 1) Is there
-  a chronological pattern to these events, and 2) Is there
-  any correlation between these events and other kinds
-  of incidents?'
+  #### Graph Outputs ####
   
-  output$gun.timeline = renderPlotly({
+  
+  ## * State Graphs ####
+  output$dash.law = renderGvis({
+    legaldat = legaldata.df()
+    
+    gvisBubbleChart(
+      data = legaldat,
+      idvar = "State",
+      xvar = "Incidents",
+      yvar = input$state.cat,
+      colorvar = "Gun Friendly Laws",
+      options = list(
+        height = "400px",
+        width = "auto",
+        explorer = "{keepInBounds: true}",
+        legend = "{position:'bottom'}",
+        sizeAxis = "{minSize: 15, maxSize: 15}",
+        hAxis = "{title: 'Total Incidents'}",
+        vAxis = "{title: 'Secondary Characteristic'}"
+      )
+    )
+    
+  })
+  
+  
+  ## * Natl. Graphs ####
+
+  output$natl.timeline = renderPlotly({
     gun.subset = sidebar.selection()
     gun.subset$date = as.Date(gun.subset$date)
-    top.coinc = coincident.df()
+    bwidth = as.integer(0.01 * (max(input$daterange) - min(input$daterange)))
     
-    # Accrue the Top 3 Concurrent Incident Characteristics
-    coinc1 = gun.subset %>% 
-      filter(., grepl(top.coinc[2,1], incident_characteristics))
-    coinc2 = gun.subset %>% 
-      filter(., grepl(top.coinc[3,1], incident_characteristics))
-    coinc3 = gun.subset %>% 
-      filter(., grepl(top.coinc[4,1], incident_characteristics))
-    
-    # Plot the graphs together, one on top of the other
-    g = ggplot() +
-      geom_density(data = gun.subset, aes(x = date, color = "orangered4")) +
-      geom_density(data = coinc1, aes(x = date, color = "orangered3")) +
-      geom_density(data = coinc2, aes(x = date, color = "orangered2")) +
-      geom_density(data = coinc3, aes(x = date, color = "orangered1")) +
+    g = ggplot(data = gun.subset, aes(x = date)) +
+      geom_freqpoly(binwidth = bwidth) +
       xlab("") +
       ylab("") +
-      # annotate("rect", xmin = as.Date("2018-01-01"), xmax = as.Date("2018-04-01"), ymin = 0, ymax = 1) +
       theme_pander() +
       scale_fill_pander() +
       theme(
         legend.title = element_blank()
-        
       )
     
-    ggplotly(g) 
-    
   })
   
-  
-  #### Participant Plot Outputs ####
-  'The goal of this section is to answer the question:
-  WHO is involved in this study? Specifically, 1) Who
-  are the VICTIMS, and 2) Who are the SUSPECTS? What was
-  their respective end in their involvement?'
-  
-  'We will use the secondary dataset of Participant Data,
-  which was derived from the Participant Dictionary Data
-  in the original dataset.'
-  
-  # Render a Plotly Graph of Victim Involvement
-  # --> Status filled with Gender, log10 scale
-  output$part.vic = renderPlotly({
-    vic.temp = part.selection() %>%
-      filter(., participant_type == "Victim") 
+  output$natl.coinc1 = renderPlot({
+    gun.subset = sidebar.selection()
+    gun.subset$date = as.Date(gun.subset$date)
+    coinc = coincident.df()
+    bwidth = as.integer(.04 * (max(input$daterange) - min(input$daterange)))
+    gun.subset = gun.subset %>% 
+      filter(., grepl(coinc[2,1], incident_characteristics))
     
-    # ggplot the graph w/ customization, colorblind friendly
-    g = ggplot(data = vic.temp, aes(x = participant_status)) +
-      geom_bar(aes(fill = participant_gender)) +
-      ggtitle("Status of Victims") +
-      scale_y_log10() +
+    g = ggplot(data = gun.subset, aes(x = date)) +
+      geom_freqpoly(binwidth = bwidth) +
       xlab("") +
       ylab("") +
-      coord_flip() +
+      labs(subtitle = coinc[2,1]) +
       theme_pander() +
-      scale_fill_pander(na.translate = T,
-                        na.value = "grey") +
+      scale_fill_pander() +
       theme(
-        axis.text.y = element_text(angle = 45),
-        legend.title = element_blank(),
-        legend.position = "bottom"
-        )
+        axis.text.x = element_text(angle = 45),
+        legend.title = element_blank()
+      )
     
-    ggplotly(g)
+    plot(g)
+    
   })
   
-  # Render a Plotly Graph of Suspect Involvement
-  # --> Status filled with Gender, log10 scale
-  output$part.sus = renderPlotly({
-    sus.temp = part.selection() %>%
-      filter(., participant_type == "Subject-Suspect") 
+  output$natl.coinc2 = renderPlot({
+    gun.subset = sidebar.selection()
+    gun.subset$date = as.Date(gun.subset$date)
+    coinc = coincident.df()
+    bwidth = as.integer(.04 * (max(input$daterange) - min(input$daterange)))
+    gun.subset = gun.subset %>% 
+      filter(., grepl(coinc[3,1], incident_characteristics))
     
-    g = ggplot(data = sus.temp, aes(x = participant_status)) +
+    g = ggplot(data = gun.subset, aes(x = date)) +
+      geom_freqpoly(binwidth = bwidth) +
+      xlab("") +
+      ylab("") +
+      labs(subtitle = coinc[3,1]) +
+      theme_pander() +
+      scale_fill_pander() +
+      theme(
+        axis.text.x = element_text(angle = 45),
+        legend.title = element_blank()
+      )
+    
+    plot(g)
+    
+  })
+  
+  output$natl.coinc3 = renderPlot({
+    gun.subset = sidebar.selection()
+    gun.subset$date = as.Date(gun.subset$date)
+    coinc = coincident.df()
+    bwidth = as.integer(.04 * (max(input$daterange) - min(input$daterange)))
+    gun.subset = gun.subset %>% 
+      filter(., grepl(coinc[4,1], incident_characteristics))
+    
+    g = ggplot(data = gun.subset, aes(x = date)) +
+      geom_freqpoly(binwidth = bwidth) +
+      xlab("") +
+      ylab("") +
+      labs(subtitle = coinc[4,1]) +
+      theme_pander() +
+      scale_fill_pander() +
+      theme(
+        axis.text.x = element_text(angle = 45),
+        legend.title = element_blank()
+      )
+    
+    plot(g)
+    
+  })
+  
+  output$part.status = renderPlotly({
+    part.temp = part.selection()
+    
+    g = ggplot(data = part.temp, aes(x = participant_status)) +
       geom_bar(aes(fill = participant_gender)) +
-      ggtitle("Status of Suspects") +
+      facet_wrap( ~ participant_type) +
       scale_y_log10() +
       xlab("") +
       ylab("") +
-      coord_flip() +
       theme_pander(lp = "bottom") +
       scale_fill_pander(na.translate = T,     #INCLUDE NA's
                         na.value = "grey") +
       theme(
-        axis.text.y = element_text(angle = 45),
+        axis.text.x = element_text(angle = -45),
         legend.title = element_blank(),
         legend.position = "bottom"
-        ) 
+      ) 
     
     ggplotly(g)
+    
+  })
+  
+  output$part.agegroup = renderPlot({
+    part.temp = part.selection()
+    
+    g = ggplot(data = part.temp, aes(x = 1)) +
+      geom_bar(aes(fill = participant_age_group), position = "fill") +
+      coord_polar(theta = "y") +
+      facet_wrap( ~ participant_type) +
+      xlab("") +
+      ylab("") +
+      theme_pander() +
+      scale_fill_pander(na.translate = T,
+                        na.value = "grey") +
+      theme(
+        legend.title = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position = "bottom"
+      )
+    
+    plot(g)
   })
   
   output$part.age = renderPlotly({
-    age.temp = part.selection() %>% 
+    part.temp = part.selection() %>% 
       filter(., is.na(participant_age) == F)
     zoom = coord_cartesian(xlim = c(0, 85))
     
-    g = ggplot(data = age.temp, aes(x = participant_age)) +
-      geom_density(aes(color = participant_gender)) +
+    g = ggplot(data = part.temp, aes(x = participant_age)) +
+      geom_freqpoly(aes(color = participant_gender), binwidth = 1) +
       facet_wrap( ~ participant_type) +
       zoom +
       xlab("") +
       ylab("") +
-      ggtitle("Age Density Information") +
       theme_pander() +
       scale_fill_pander() +
       theme(
@@ -345,24 +442,51 @@ shinyServer(function(input, output, session){
   table, matching user selections'
   
   output$detailtable = DT::renderDataTable({
+    #15 and 19
     gun.details = sidebar.selection() %>%
-      select(., 3:5, 7:8, 20, 10)
-    names(gun.details) = c("Date", "State", "City or County",
-                           "Killed", "Injured", "Incident Notes",
-                           "Source URL")
+      select(., 3:5, 7:8, 19, 20, 9, 10, 15) %>%
+      mutate(
+        .,
+        incident_url = paste0(
+          "<a href='",
+          incident_url,
+          "' target='_blank'>",
+          incident_url,
+          "</a>"
+        ),
+        source_url = paste0(
+          "<a href='",
+          source_url,
+          "' target='_blank'>",
+          source_url,
+          "</a>"
+        )
+      )
+    names(gun.details) = c("Date",
+                           "State",
+                           "City or County",
+                           "Killed",
+                           "Injured",
+                           "Guns Involved",
+                           "Incident Notes",
+                           "Archival URL",
+                           "Source URL",
+                           "Characteristics")
     
-    datatable(gun.details,
-              rownames = F,
-              extensions = c("Buttons"),
-              options = list(
-                scrollX = T,
-                pageLength = 5,
-                dom = "Bfrtip",
-                buttons = c("copy", "csv", "excel"),
-                autoWidth = T,
-                columnDefs = list(list(width = '350px', targets = 5))
-                )
-              )
+    datatable(
+      gun.details,
+      rownames = F,
+      extensions = c("Buttons"),
+      escape = F,
+      options = list(
+        scrollX = T,
+        pageLength = 5,
+        dom = "Bfrtip",
+        buttons = c("copy", "csv", "excel"),
+        autoWidth = T,
+        columnDefs = list(list(width = '350px', targets = 6))
+      )
+    )
     
   })
   
@@ -392,14 +516,19 @@ shinyServer(function(input, output, session){
               ))
   })
   
+  # Prep Dashdata for Clean, Dashboard Presentation
   output$dashtable = DT::renderDataTable({
     dashdata = dashdata.df() %>% 
-      mutate(., Incidents = round(Incidents, digits = 3),
-             Guns = round(Guns, digits = 3),
-             Injured = round(Guns, digits = 3),
-             Killed = round(Killed, digits = 3)) %>% 
+      mutate(., Incidents = round(Incidents, digits = 2),
+             Guns = round(Guns, digits = 2),
+             Injured = round(Guns, digits = 2),
+             Killed = round(Killed, digits = 2)) %>% 
       select(., 1:5,7,9:12) %>% 
-      arrange(., desc(Incidents))
+      arrange(., desc(Incidents)) %>% 
+      rename(., "Firearm Registration" = Firearm.Registration,
+             "Carry Permit" = Carry.Permit,
+             "Purchase Permit" = Purchase.Permit,
+             "Open Carry" = Open.Carry)
     
     datatable(dashdata,
               rownames = F,

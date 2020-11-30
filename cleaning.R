@@ -98,6 +98,17 @@ all.parts = all.parts %>%
            participant_gender == "Female" |
            is.na(participant_gender) == T)
 
+stat.cleaner = function(x) {
+  if (is.na(x)) {
+    x = "Missing Data"
+  } else {
+    x = gsub(",", ", ", x)
+  }
+  
+}
+
+all.parts$participant_status = sapply(all.parts$participant_status, stat.cleaner)
+
 #### Gun Involvement Processing ####
 'This section will perform a similar function to
 that of the Participant Processing'
@@ -142,7 +153,7 @@ names(glaws) = c("State", "Firearm Registration", "Carry Permit", "Purchase Perm
 #### Finalize Data; create csv's ####
 
 #write.csv(all.guns, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Guns_Involved.csv")
-#write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data.csv")
+write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data2.csv")
 #write.csv(gun.orig, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Orig.csv")
-write.csv(glaws, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Laws_Clean.csv")
+#write.csv(glaws, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Laws_Clean.csv")
 
