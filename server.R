@@ -49,7 +49,7 @@ shinyServer(function(input, output, session){
     
   })
   
-  # Find Dataset of State Info & Legal Restrictions
+  ## * State-Related Data ####
   statedata.df = reactive({
     gun.subset = sidebar.selection()
     
@@ -107,9 +107,7 @@ shinyServer(function(input, output, session){
     
   })
   
-
-  
-  # Create Dashboard DF with Mapping, Legal, & Population Data (return DF)
+  ## * Dashboard Data ####
   dashdata.df = reactive({
     dash.subset = statedata.df()
       
@@ -131,29 +129,71 @@ shinyServer(function(input, output, session){
     
   })
   
+  ## * Legal Analysis Data ####
   legaldata.df = reactive({
-    legal.subset = statedata.df() %>% 
-      select(., 1:5,7,9:12) %>% 
-      mutate(., 
-             Fire = sapply(Firearm.Registration, req_to_bool),
-             Carry = sapply(Carry.Permit, req_to_bool),
-             Purchase = sapply(Purchase.Permit, req_to_bool),
-             Open = sapply(Open.Carry, yes_to_bool)) %>% 
+    legal.subset = statedata.df() %>%
+      select(., 1:5, 7, 9:12) %>%
+      mutate(
+        .,
+        Fire = sapply(Firearm.Registration, req_to_bool),
+        Carry = sapply(Carry.Permit, req_to_bool),
+        Purchase = sapply(Purchase.Permit, req_to_bool),
+        Open = sapply(Open.Carry, yes_to_bool)
+      ) %>%
+      rename(., lstate = state)
+    
+    # Recalculate Gun Restrictions
+    if ("Fire" %in% input$legal.parameter == F) {
+      legal.subset$Fire = FALSE
+    }
+    if ("Carry" %in% input$legal.parameter == F) {
+      legal.subset$Carry = FALSE
+    }
+    if ("Purchase" %in% input$legal.parameter == F) {
+      legal.subset$Purchase = FALSE
+    }
+    if ("Open" %in% input$legal.parameter == F) {
+      legal.subset$Open = FALSE
+    }
+    
+    # Fix State Names
+    legal.subset = legal.subset %>%
       mutate(.,
-             state = state.abb[which(state.name == state)],
-             GFriendly = (Fire + Carry + Purchase + Open)) %>% 
-      rename(., State = state, "Gun Friendly Laws" = GFriendly)
+             lstate = state.abb[match(lstate, state.name)],
+             Restrictions = (Fire + Carry + Purchase + Open)) %>%
+      rename(., State = lstate)
+    
     
     if (input$state.scale == "percap") {
-      legal.subset = legal.subset %>% 
-        mutate(., Incidents = (Incidents/Pop) * 100000,
-               Injured = (Injured/Pop) * 100000, 
-               Killed = (Killed/Pop) * 100000,
-               Guns = (Guns/Pop) * 100000)
+      # Mutate in place to account for per capita
+      legal.subset = legal.subset %>%
+        mutate(
+          .,
+          Incidents = (Incidents / Pop) * 100000,
+          Injured = (Injured / Pop) * 100000,
+          Killed = (Killed / Pop) * 100000,
+          Guns = (Guns / Pop) * 100000
+        )
+      # posinput = grep(input$state.cat, t(data.frame(colnames(legal.subset))))
+      # meaninput = sapply(legal.subset[posinput], mean)
+      
+      # Calculate Deviation from user input
+      legal.subset %>%
+        mutate(., Difference = !!(sym(input$state.cat)) - 
+                                            mean(!!sym(input$state.cat)))
+      
     } else {
-      legal.subset
+      # Just output with user input & deviation
+      posinput = grep(input$state.cat, t(data.frame(colnames(legal.subset))))
+      meaninput = sapply(legal.subset[posinput], mean)
+      
+      legal.subset %>%
+        mutate(., Difference = !!(sym(input$state.cat)) - 
+                                            mean(!!sym(input$state.cat)))
       
     }
+    
+    
     
   })
   
@@ -252,6 +292,62 @@ shinyServer(function(input, output, session){
     
   })
   
+  ## * Natl Infoboxes ####
+  
+  output$sus.outcome = renderInfoBox({
+    part.temp = part.selection() %>% 
+      filter(., participant_type == "Subject-Suspect") %>% 
+      count(., participant_status) %>% 
+      arrange(., desc(n)) %>% 
+      mutate(., rate = label_percent(accuracy = 0.01)(n / sum(n)))
+    
+    infoBox(title = part.temp[1,1],
+            value = paste(part.temp[1,3], "of cases"),
+            subtitle = "Most Common Result for Suspects",
+            color = "red",
+            width = 6)
+    
+  })
+  
+  output$vic.outcome = renderInfoBox({
+    part.temp = part.selection() %>% 
+      filter(., participant_type == "Victim") %>% 
+      count(., participant_status) %>% 
+      arrange(., desc(n)) %>% 
+      mutate(., rate = label_percent(accuracy = 0.01)(n / sum(n)))
+    
+    infoBox(title = part.temp[1,1],
+            value = paste(part.temp[1,3], "of cases"),
+            subtitle = "Most Common Result for Victims",
+            color = "yellow",
+            width = 6)
+    
+  })
+  
+  output$sus.age = renderValueBox({
+    part.temp = part.selection() %>% 
+      filter(., participant_type == "Subject-Suspect") %>% 
+      summarise(., med = median(participant_age, na.rm = T))
+    
+    valueBox(value = as.integer(part.temp),
+            subtitle = "Median Suspect Age",
+            color = "red",
+            width = 3)
+    
+  })
+  
+  output$vic.age = renderValueBox({
+    part.temp = part.selection() %>% 
+      filter(., participant_type == "Victim") %>% 
+      summarise(., med = median(participant_age, na.rm = T))
+    
+    valueBox(value = as.integer(part.temp),
+            subtitle = "Median Victim Age",
+            color = "yellow",
+            width = 3)
+    
+  })
+  
   #### Graph Outputs ####
   
   
@@ -264,21 +360,21 @@ shinyServer(function(input, output, session){
       idvar = "State",
       xvar = "Incidents",
       yvar = input$state.cat,
-      colorvar = "Gun Friendly Laws",
+      colorvar = input$display.mode,
       options = list(
         height = "400px",
         width = "auto",
         explorer = "{keepInBounds: true}",
         legend = "{position:'bottom'}",
         sizeAxis = "{minSize: 15, maxSize: 15}",
-        hAxis = "{title: 'Total Incidents'}",
+        hAxis = "{title: 'Total Incidents, Scaled Above'}",
         vAxis = "{title: 'Secondary Characteristic'}"
       )
     )
     
   })
   
-  
+
   ## * Natl. Graphs ####
 
   output$natl.timeline = renderPlotly({
@@ -552,12 +648,6 @@ shinyServer(function(input, output, session){
                 dom = "Bfrtip",
                 buttons = c("copy", "csv", "excel"))
               )
-  })
-  
-  output$parttable = DT::renderDataTable({
-    datatable(partdata, rownames = F,
-              options = list(scrollX = T,
-                             scrollY = T))
   })
   
 })
