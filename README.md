@@ -1,6 +1,6 @@
 # Gun Violence Analysis Shiny Website
 
-### [Website](https://theodoremcheek.shinyapps.io/GunViolence) | [LinkedIn](https://www.linkedin.com/in/theodorecheek)
+### [Website](https://theodorecheek.shinyapps.io/GunViolence) | [LinkedIn](https://www.linkedin.com/in/theodorecheek)
 
 ---------------------------------------------------
 
