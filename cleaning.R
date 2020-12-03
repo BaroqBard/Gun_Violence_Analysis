@@ -153,7 +153,7 @@ names(glaws) = c("State", "Firearm Registration", "Carry Permit", "Purchase Perm
 #### Finalize Data; create csv's ####
 
 #write.csv(all.guns, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Guns_Involved.csv")
-write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data2.csv")
+#write.csv(all.parts, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Part_Data2.csv")
 #write.csv(gun.orig, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Orig.csv")
 #write.csv(glaws, "/home/theodore/Gallery_Prime/RStuff/Projects/Shiny_GunViolence/Gun_Laws_Clean.csv")
 

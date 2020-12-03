@@ -1,6 +1,7 @@
 
 
 
+
 shinyUI(dashboardPage(
   # Header Section ####
   dashboardHeader(title = "US Gun Violence"),
@@ -12,11 +13,9 @@ shinyUI(dashboardPage(
       menuItem("A Shiny App by Theodore Cheek",
                icon = NULL,
                href = "https://www.linkedin.com/in/theodorecheek/"),
-      menuItem(
-        'State Dashboard',
-        tabName = 'Breakdown',
-        icon = icon("map")
-      ),
+      menuItem('State Dashboard',
+               tabName = 'Breakdown',
+               icon = icon("map")),
       menuItem(
         'National Dashboard',
         tabName = 'Involvement',
@@ -193,8 +192,10 @@ shinyUI(dashboardPage(
                            radioButtons(
                              inputId = "display.mode",
                              label = NULL,
-                             choices = c("Weaponry Restrictions" = "Restrictions",
-                                         "Difference from Mean" = "Difference")
+                             choices = c(
+                               "Weaponry Restrictions" = "Restrictions",
+                               "Difference from Mean" = "Difference"
+                             )
                            ),
                            width = 4
                          )
@@ -249,7 +250,7 @@ shinyUI(dashboardPage(
                 
                 fluidRow(
                   box(
-                    title = "Subsequent Status of Participants",
+                    title = "Subsequent Status of Participants (Log Scale)",
                     status = "success",
                     solidHeader = T,
                     plotlyOutput("part.status"),
