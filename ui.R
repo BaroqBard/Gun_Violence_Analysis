@@ -98,10 +98,11 @@ shinyUI(dashboardPage(
                 "State Dashboard",
                 fluidRow(
                   box(
-                    title = "Incident Tracker by State",
+                    title = "Incident Density Tracker by State",
                     solidHeader = T,
                     status = "primary",
                     htmlOutput("gun.map"),
+                    footer = "Hover for individual state information",
                     width = 12
                   )
                 ),
@@ -126,15 +127,6 @@ shinyUI(dashboardPage(
                   infoBoxOutput("dashMaxInj"),
                   infoBoxOutput("dashMaxKill")
                   
-                ),
-                fluidRow(
-                  box(
-                    title = "Data by State",
-                    solidHeader = T,
-                    status = "info",
-                    DT::dataTableOutput("dashtable"),
-                    width = 12
-                  )
                 )
               ),
               
@@ -142,12 +134,26 @@ shinyUI(dashboardPage(
                        "Legal Analysis",
                        fluidRow(
                          box(
-                           title = "State Weapon Laws",
+                           title = "Relationship between State Regulations & Incident Fallout",
+                           solidHeader = T,
+                           status = "primary",
+                           htmlOutput("dash.law"),
+                           footer = "The bubble color represents the density of
+                           statewide restrictions on Weaponry. Filter these 
+                           below. Scroll Up to Zoom Out, Scroll Down to 
+                           Zoom in. Click & Drag to Pan, Right-click to Reset",
+                           width = 12
+                         )
+                         
+                       ),
+                       fluidRow(
+                         box(
+                           title = "State Weapon Regulations",
                            solidHeader = T,
                            status = "success",
                            checkboxGroupInput(
                              "legal.parameter",
-                             "Select Weapon Regulations to Include:",
+                             "Select Included Weapon Restrictions:",
                              c(
                                "Firearm Registration" = "Fire",
                                "Carry Permit" = "Carry",
@@ -159,14 +165,14 @@ shinyUI(dashboardPage(
                                           "Purchase",
                                           "Open")
                            ),
-                           width = 4
+                           width = 6
                            
                          ),
                          box(
-                           title = "Select Parameters",
+                           title = "Select Parameter & Scaling",
                            solidHeader = T,
                            "Secondary Characteristic: ",
-                           status = "success",
+                           status = "warning",
                            selectizeInput(
                              inputId = "state.cat",
                              label = NULL,
@@ -181,33 +187,38 @@ shinyUI(dashboardPage(
                              choices = c("Per Capita x 100,000" = "percap",
                                          "Total Incidents" = "identity")
                            ),
-                           width = 4
-                         ),
-                         box(
-                           title = "Select Display Mode",
-                           solidHeader = T,
-                           status = "warning",
-                           "Choose whether color represents weaponry legal
-                           status or Difference from the mean",
-                           radioButtons(
-                             inputId = "display.mode",
-                             label = NULL,
-                             choices = c(
-                               "Weaponry Restrictions" = "Restrictions",
-                               "Difference from Mean" = "Difference"
-                             )
-                           ),
-                           width = 4
-                         )
+                           width = 6
+                         )#,
+                         # box(
+                         #   title = "Select Display Mode",
+                         #   solidHeader = T,
+                         #   status = "warning",
+                         #   "Select graph color value",
+                         #   radioButtons(
+                         #     inputId = "display.mode",
+                         #     label = NULL,
+                         #     choices = c(
+                         #       "Weaponry Restrictions" = "Restrictions",
+                         #       "Difference from Mean" = "Difference"
+                         #     )
+                         #   ),
+                         #   # "Include ONLY States with Selected Restrictions",
+                         #   # checkboxInput(
+                         #   #   inputId = "focus.restriction",
+                         #   #   label = "Restrict Selection",
+                         #   #   value = FALSE
+                         #   # ),
+                         #   width = 4
+                         # )
                        ),
+                       
                        
                        fluidRow(
                          box(
-                           title = "State Analysis, per Characteristic & Law",
+                           title = "Searchable Legal & Incidental State Data",
                            solidHeader = T,
-                           status = "primary",
-                           htmlOutput("dash.law"),
-                           footer = "Scroll Up to Zoom Out, Scroll Down to Zoom in. Click & Drag to Pan, Right-click to Reset",
+                           status = "info",
+                           DT::dataTableOutput("dashtable"),
                            width = 12
                          )
                          
@@ -265,7 +276,7 @@ shinyUI(dashboardPage(
                 "Coincidental Details",
                 fluidRow(
                   box(
-                    title = "Timeline Data",
+                    title = "Visual Record of Incidents Over Time",
                     status = "primary",
                     solidHeader = T,
                     plotlyOutput("natl.timeline"),
@@ -274,7 +285,7 @@ shinyUI(dashboardPage(
                 ),
                 fluidRow(
                   box(
-                    title = "1st Association",
+                    title = "1st Association Preview",
                     status = "warning",
                     solidHeader = T,
                     plotOutput("natl.coinc1",
@@ -282,7 +293,7 @@ shinyUI(dashboardPage(
                     width = 4
                   ),
                   box(
-                    title = "2nd Association",
+                    title = "2nd Association Preview",
                     status = "warning",
                     solidHeader = T,
                     plotOutput("natl.coinc2",
@@ -290,7 +301,7 @@ shinyUI(dashboardPage(
                     width = 4
                   ),
                   box(
-                    title = "3rd Association",
+                    title = "3rd Association Preview",
                     status = "warning",
                     solidHeader = T,
                     plotOutput("natl.coinc3",
@@ -310,11 +321,12 @@ shinyUI(dashboardPage(
                     width = 6
                   ),
                   box(
-                    title = "Weapons Most Often Involved",
+                    title = "Weaponry Most Often Reported",
                     status = "info",
                     solidHeader = T,
                     "The following weapons are most often recognized
-                             in reports of gun violence per your selection",
+                             in reports of gun violence per your selection.
+                             This section includes BOTH Guns & Ammunition",
                     DT::dataTableOutput("weapons.table"),
                     width = 6
                   )

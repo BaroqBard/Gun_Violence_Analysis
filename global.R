@@ -39,9 +39,9 @@ req_to_bool = function(x) {
 
 yes_to_bool = function(x) {
   if (x == "Yes") {
-    x = TRUE
-  } else {
     x = FALSE
+  } else {
+    x = TRUE
   }
   
   return(x)

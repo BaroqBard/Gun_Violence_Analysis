@@ -178,7 +178,7 @@ shinyServer(function(input, output, session){
       # meaninput = sapply(legal.subset[posinput], mean)
       
       # Calculate Deviation from user input
-      legal.subset %>%
+      legal.subset = legal.subset %>%
         mutate(., Difference = !!(sym(input$state.cat)) - 
                                             mean(!!sym(input$state.cat)))
       
@@ -187,12 +187,11 @@ shinyServer(function(input, output, session){
       posinput = grep(input$state.cat, t(data.frame(colnames(legal.subset))))
       meaninput = sapply(legal.subset[posinput], mean)
       
-      legal.subset %>%
+      legal.subset = legal.subset %>%
         mutate(., Difference = !!(sym(input$state.cat)) - 
                                             mean(!!sym(input$state.cat)))
       
     }
-    
     
     
   })
@@ -230,9 +229,15 @@ shinyServer(function(input, output, session){
       head(., 1) %>% 
       summarise(., state, Incidents)
     
+    if (input$pop_scale == "percap") {
+      scaling = "per Capita"
+    } else {
+      scaling = ""
+    }
+    
     infoBox(maxtemp$state, 
             round(maxtemp$Incidents, digits = 3),
-            subtitle = "Most Incidents",
+            subtitle = paste("Most Incidents", scaling),
             icon = icon("lightbulb"),
             color = "yellow",
             width = 3)
@@ -247,9 +252,15 @@ shinyServer(function(input, output, session){
       head(., 1) %>% 
       summarise(., state, Guns)
     
+    if (input$pop_scale == "percap") {
+      scaling = "per Incident, per Capita"
+    } else {
+      scaling = "per Incident"
+    }
+    
     infoBox(meanGuns$state,
             round(meanGuns$Guns, digits = 3),
-            subtitle = "AVG Guns Involved",
+            subtitle = paste("Most Guns", scaling),
             icon = icon("crosshairs"),
             color = "yellow",
             width = 3,
@@ -265,9 +276,15 @@ shinyServer(function(input, output, session){
       head(., 1) %>% 
       summarise(., state, Injured)
     
+    if (input$pop_scale == "percap") {
+      scaling = "per Incident, per Capita"
+    } else {
+      scaling = "per Incident"
+    }
+    
     infoBox(maxInj$state,
             round(maxInj$Injured, digits = 3),
-            subtitle = "Most Persons Injured",
+            subtitle = paste("Most Persons Injured", scaling),
             color = "red",
             width = 3,
             icon = icon("ambulance"))
@@ -282,9 +299,15 @@ shinyServer(function(input, output, session){
       head(., 1) %>% 
       summarise(., state, Killed)
     
+    if (input$pop_scale == "percap") {
+      scaling = "per Incident, per Capita"
+    } else {
+      scaling = "per Incident"
+    }
+    
     infoBox(maxKill$state,
             round(maxKill$Killed, digits = 3),
-            subtitle = "Most Persons Killed",
+            subtitle = paste("Most Persons Killed", scaling),
             color = "red",
             width = 3,
             fill = T,
@@ -360,15 +383,15 @@ shinyServer(function(input, output, session){
       idvar = "State",
       xvar = "Incidents",
       yvar = input$state.cat,
-      colorvar = input$display.mode,
+      colorvar = "Restrictions",
       options = list(
         height = "400px",
         width = "auto",
         explorer = "{keepInBounds: true}",
         legend = "{position:'bottom'}",
         sizeAxis = "{minSize: 15, maxSize: 15}",
-        hAxis = "{title: 'Total Incidents, Scaled Above'}",
-        vAxis = "{title: 'Secondary Characteristic'}"
+        hAxis = "{title: 'Total Incidents - Select Scaling Below'}",
+        vAxis = "{title: 'Target Parameter'}"
       )
     )
     
@@ -400,6 +423,30 @@ shinyServer(function(input, output, session){
     coinc = coincident.df()
     bwidth = as.integer(.04 * (max(input$daterange) - min(input$daterange)))
     gun.subset = gun.subset %>% 
+      filter(., grepl(coinc[1,1], incident_characteristics))
+    
+    g = ggplot(data = gun.subset, aes(x = date)) +
+      geom_freqpoly(binwidth = bwidth) +
+      xlab("") +
+      ylab("") +
+      labs(subtitle = coinc[1,1]) +
+      theme_pander() +
+      scale_fill_pander() +
+      theme(
+        axis.text.x = element_text(angle = 45),
+        legend.title = element_blank()
+      )
+    
+    plot(g)
+    
+  })
+  
+  output$natl.coinc2 = renderPlot({
+    gun.subset = sidebar.selection()
+    gun.subset$date = as.Date(gun.subset$date)
+    coinc = coincident.df()
+    bwidth = as.integer(.04 * (max(input$daterange) - min(input$daterange)))
+    gun.subset = gun.subset %>% 
       filter(., grepl(coinc[2,1], incident_characteristics))
     
     g = ggplot(data = gun.subset, aes(x = date)) +
@@ -418,7 +465,7 @@ shinyServer(function(input, output, session){
     
   })
   
-  output$natl.coinc2 = renderPlot({
+  output$natl.coinc3 = renderPlot({
     gun.subset = sidebar.selection()
     gun.subset$date = as.Date(gun.subset$date)
     coinc = coincident.df()
@@ -431,30 +478,6 @@ shinyServer(function(input, output, session){
       xlab("") +
       ylab("") +
       labs(subtitle = coinc[3,1]) +
-      theme_pander() +
-      scale_fill_pander() +
-      theme(
-        axis.text.x = element_text(angle = 45),
-        legend.title = element_blank()
-      )
-    
-    plot(g)
-    
-  })
-  
-  output$natl.coinc3 = renderPlot({
-    gun.subset = sidebar.selection()
-    gun.subset$date = as.Date(gun.subset$date)
-    coinc = coincident.df()
-    bwidth = as.integer(.04 * (max(input$daterange) - min(input$daterange)))
-    gun.subset = gun.subset %>% 
-      filter(., grepl(coinc[4,1], incident_characteristics))
-    
-    g = ggplot(data = gun.subset, aes(x = date)) +
-      geom_freqpoly(binwidth = bwidth) +
-      xlab("") +
-      ylab("") +
-      labs(subtitle = coinc[4,1]) +
       theme_pander() +
       scale_fill_pander() +
       theme(
