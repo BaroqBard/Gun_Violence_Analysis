@@ -285,27 +285,27 @@ shinyUI(dashboardPage(
                 ),
                 fluidRow(
                   box(
-                    title = "1st Association Preview",
+                    title = "Primary Coincidence",
                     status = "warning",
                     solidHeader = T,
                     plotOutput("natl.coinc1",
-                               height = "120px"),
+                               height = "160px"),
                     width = 4
                   ),
                   box(
-                    title = "2nd Association Preview",
+                    title = "Secondary Coincidence",
                     status = "warning",
                     solidHeader = T,
                     plotOutput("natl.coinc2",
-                               height = "120px"),
+                               height = "160px"),
                     width = 4
                   ),
                   box(
-                    title = "3rd Association Preview",
+                    title = "Tertiary Coincidence",
                     status = "warning",
                     solidHeader = T,
                     plotOutput("natl.coinc3",
-                               height = "120px"),
+                               height = "160px"),
                     width = 4
                   )
                 ),

@@ -429,7 +429,8 @@ shinyServer(function(input, output, session){
       geom_freqpoly(binwidth = bwidth) +
       xlab("") +
       ylab("") +
-      labs(subtitle = coinc[1,1]) +
+      labs(title = coinc[1,1], 
+           subtitle = paste("Coincident Rate:", coinc[1,2])) +
       theme_pander() +
       scale_fill_pander() +
       theme(
@@ -453,7 +454,8 @@ shinyServer(function(input, output, session){
       geom_freqpoly(binwidth = bwidth) +
       xlab("") +
       ylab("") +
-      labs(subtitle = coinc[2,1]) +
+      labs(title = coinc[2,1],
+           subtitle = paste("Coincident Rate:", coinc[2,2])) +
       theme_pander() +
       scale_fill_pander() +
       theme(
@@ -477,7 +479,8 @@ shinyServer(function(input, output, session){
       geom_freqpoly(binwidth = bwidth) +
       xlab("") +
       ylab("") +
-      labs(subtitle = coinc[3,1]) +
+      labs(title = coinc[3,1],
+           subtitle = paste("Coincident Rate:", coinc[3,2])) +
       theme_pander() +
       scale_fill_pander() +
       theme(
@@ -637,19 +640,21 @@ shinyServer(function(input, output, session){
   
   # Prep Dashdata for Clean, Dashboard Presentation
   output$dashtable = DT::renderDataTable({
-    dashdata = dashdata.df() %>% 
-      mutate(., Incidents = round(Incidents, digits = 2),
-             Guns = round(Guns, digits = 2),
-             Injured = round(Guns, digits = 2),
-             Killed = round(Killed, digits = 2)) %>% 
-      select(., 1:5,7,9:12) %>% 
-      arrange(., desc(Incidents)) %>% 
-      rename(., "Firearm Registration" = Firearm.Registration,
-             "Carry Permit" = Carry.Permit,
-             "Purchase Permit" = Purchase.Permit,
-             "Open Carry" = Open.Carry)
+    legaldata = legaldata.df() %>% 
+       mutate(., Incidents = round(Incidents, digits = 2),
+              Guns = round(Guns, digits = 2),
+              Injured = round(Guns, digits = 2),
+              Killed = round(Killed, digits = 2)) %>% 
+       select(., 1:10) %>% 
+       arrange(., desc(Incidents)) %>% 
+       rename(.,
+              "Population" = Pop,
+              "Firearm Registration" = Firearm.Registration,
+              "Carry Permit" = Carry.Permit,
+              "Purchase Permit" = Purchase.Permit,
+              "Open Carry" = Open.Carry)
     
-    datatable(dashdata,
+    datatable(legaldata,
               rownames = F,
               extensions = c("Buttons"),
               options = list(

@@ -27,6 +27,7 @@
 *.Rhistory
 *.csv
 *.RData
+*.dcf
 
 # OS generated files #
 ######################
