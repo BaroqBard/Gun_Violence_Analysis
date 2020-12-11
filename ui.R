@@ -95,14 +95,14 @@ shinyUI(dashboardPage(
             tabsetPanel(
               tabPanel(
                 ## * State Dashboard ####
-                "State Dashboard",
+                "Geographical Overview",
                 fluidRow(
                   box(
                     title = "Incident Density Tracker by State",
                     solidHeader = T,
                     status = "primary",
                     htmlOutput("gun.map"),
-                    footer = "Hover for individual state information",
+                    footer = "Hover for state-by-state incident stats, scaled below",
                     width = 12
                   )
                 ),
@@ -117,7 +117,7 @@ shinyUI(dashboardPage(
                       inputId = "pop_scale",
                       label = NULL,
                       choices = c("Per Capita x 100,000" = "percap",
-                                  "Per Incident" = "identity")
+                                  "Total Incidents" = "identity")
                     ),
                     width = 3
                   ),
@@ -169,7 +169,7 @@ shinyUI(dashboardPage(
                            
                          ),
                          box(
-                           title = "Select Parameter & Scaling",
+                           title = "Select Secondary Parameter & Scaling",
                            solidHeader = T,
                            "Secondary Characteristic: ",
                            status = "warning",
@@ -231,7 +231,7 @@ shinyUI(dashboardPage(
             tabsetPanel(
               ## * Participant Data ####
               tabPanel(
-                "Participant Data",
+                "Participant Overview",
                 # put the boxes here
                 fluidRow(
                   box(
@@ -273,7 +273,7 @@ shinyUI(dashboardPage(
               ),
               ## * Coincident Details ####
               tabPanel(
-                "Coincidental Details",
+                "Coincidental Characteristics",
                 fluidRow(
                   box(
                     title = "Visual Record of Incidents Over Time",

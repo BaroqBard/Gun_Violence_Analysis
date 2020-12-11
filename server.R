@@ -110,7 +110,7 @@ shinyServer(function(input, output, session){
   ## * Dashboard Data ####
   dashdata.df = reactive({
     dash.subset = statedata.df()
-      
+    
     
     if (input$pop_scale == "percap") {
       dash.subset = dash.subset %>% 
@@ -124,7 +124,7 @@ shinyServer(function(input, output, session){
                Killed = Killed / Incidents,
                Guns = Guns / Incidents)
     }
-      
+    
     dash.subset
     
   })
@@ -178,18 +178,20 @@ shinyServer(function(input, output, session){
       # meaninput = sapply(legal.subset[posinput], mean)
       
       # Calculate Deviation from user input
+      # I have retired this from the app, but will retain
+      # the calculation in case I find it useful later
       legal.subset = legal.subset %>%
         mutate(., Difference = !!(sym(input$state.cat)) - 
-                                            mean(!!sym(input$state.cat)))
+                                            median(!!sym(input$state.cat)))
       
     } else {
       # Just output with user input & deviation
-      posinput = grep(input$state.cat, t(data.frame(colnames(legal.subset))))
-      meaninput = sapply(legal.subset[posinput], mean)
+      # posinput = grep(input$state.cat, t(data.frame(colnames(legal.subset))))
+      # meaninput = sapply(legal.subset[posinput], mean)
       
       legal.subset = legal.subset %>%
         mutate(., Difference = !!(sym(input$state.cat)) - 
-                                            mean(!!sym(input$state.cat)))
+                                            median(!!sym(input$state.cat)))
       
     }
     
@@ -391,7 +393,7 @@ shinyServer(function(input, output, session){
         legend = "{position:'bottom'}",
         sizeAxis = "{minSize: 15, maxSize: 15}",
         hAxis = "{title: 'Total Incidents - Select Scaling Below'}",
-        vAxis = "{title: 'Target Parameter'}"
+        vAxis = "{title: 'Secondary Incident Parameter'}"
       )
     )
     
@@ -594,6 +596,8 @@ shinyServer(function(input, output, session){
                            "Archival URL",
                            "Source URL",
                            "Characteristics")
+    
+    # Want to widen 10th Column... Project for Later
     
     datatable(
       gun.details,
