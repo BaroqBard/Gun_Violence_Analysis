@@ -647,7 +647,7 @@ shinyServer(function(input, output, session){
     legaldata = legaldata.df() %>% 
        mutate(., Incidents = round(Incidents, digits = 2),
               Guns = round(Guns, digits = 2),
-              Injured = round(Guns, digits = 2),
+              Injured = round(Injured, digits = 2),
               Killed = round(Killed, digits = 2)) %>% 
        select(., 1:10) %>% 
        arrange(., desc(Incidents)) %>% 
