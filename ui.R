@@ -78,7 +78,7 @@ shinyUI(dashboardPage(
       menuItem(
         "Blog Post - Using this Website",
         icon = icon("blog"),
-        href = ""
+        href = "https://nycdatascience.com/blog/student-works/us-gun-violence/"
       ),
       menuItem(
         "~ Theodore Cheek LinkedIn ~",
